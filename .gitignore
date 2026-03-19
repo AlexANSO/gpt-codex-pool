@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+.DS_Store
+*.enc
+*.tsbuildinfo
+.temp/
+.codex-pool/
+coverage/
+*.tgz
+*.tar.gz
+
+# AI/internal guidance
+AGENTS.md
+**/AGENTS.md
+PROJECT.md
+docs/features-guide.md
