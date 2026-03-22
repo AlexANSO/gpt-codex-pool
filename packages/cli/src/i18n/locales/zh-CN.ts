@@ -20,7 +20,6 @@ export const zhCN: Record<string, string> = {
   'cli.help.accountEnable': '启用账号',
   'cli.help.accountDisable': '禁用账号',
   'cli.help.authLogin': '浏览器登录并自动创建账号',
-  'cli.help.authLoginManual': '手动 OAuth 登录（指定账号）',
   'cli.help.authValidate': '验证 Session 是否有效',
   'cli.help.authLogout': '删除凭证并登出',
   'cli.help.quotaCheck': '检查单个账号的额度',
@@ -62,17 +61,9 @@ export const zhCN: Record<string, string> = {
 
   // account 命令
   'commands.account.description': '管理账号池中的账号',
-  'commands.account.add.description': '添加新账号到池',
-  'commands.account.add.option.email': '账号邮箱',
-  'commands.account.add.option.label': '账号标签',
-  'commands.account.add.option.tier': '套餐类型 (plus|pro)',
-  'commands.account.add.option.tags': '标签列表，用逗号分隔',
-  'commands.account.add.success': '✓ 账号添加成功',
-  'commands.account.add.nextStep': '运行 "codex-pool auth login" 进行认证',
-
   'commands.account.list.description': '列出池中的所有账号',
   'commands.account.list.option.status': '按状态筛选',
-  'commands.account.list.empty': '未找到账号。运行 "codex-pool account add" 添加账号。',
+  'commands.account.list.empty': '未找到账号。运行 "codex-pool auth login" 添加账号。',
   'commands.account.list.header': '账号列表',
   'commands.account.list.total': '共 {count} 个账号',
 
@@ -102,7 +93,6 @@ export const zhCN: Record<string, string> = {
   // auth 命令
   'commands.auth.description': '认证操作',
   'commands.auth.login.description': '浏览器登录（会打开浏览器窗口）',
-  'commands.auth.login.argument.id': '账号ID',
   'commands.auth.login.success': '✓ 登录成功',
   'commands.auth.login.failed': '✗ 登录失败: {error}',
 

@@ -20,7 +20,6 @@ export const en: Record<string, string> = {
   'cli.help.accountEnable': 'Enable account',
   'cli.help.accountDisable': 'Disable account',
   'cli.help.authLogin': 'Browser login and auto-create account',
-  'cli.help.authLoginManual': 'Manual OAuth login (specify account)',
   'cli.help.authValidate': 'Validate if session is valid',
   'cli.help.authLogout': 'Delete credentials and logout',
   'cli.help.quotaCheck': 'Check quota for single account',
@@ -62,17 +61,9 @@ export const en: Record<string, string> = {
 
   // Account Commands
   'commands.account.description': 'Manage pool accounts',
-  'commands.account.add.description': 'Add a new account to the pool',
-  'commands.account.add.option.email': 'Account email',
-  'commands.account.add.option.label': 'Account label',
-  'commands.account.add.option.tier': 'Plan tier (plus|pro)',
-  'commands.account.add.option.tags': 'Comma-separated tags',
-  'commands.account.add.success': '✓ Account added successfully',
-  'commands.account.add.nextStep': 'Run "codex-pool auth login" to authenticate',
-
   'commands.account.list.description': 'List all accounts in the pool',
   'commands.account.list.option.status': 'Filter by status',
-  'commands.account.list.empty': 'No accounts found. Run "codex-pool account add" to add one.',
+  'commands.account.list.empty': 'No accounts found. Run "codex-pool auth login" to add one.',
   'commands.account.list.header': 'Accounts',
   'commands.account.list.total': 'Total: {count} accounts',
 
@@ -102,7 +93,6 @@ export const en: Record<string, string> = {
   // Auth Commands
   'commands.auth.description': 'Authentication operations',
   'commands.auth.login.description': 'Browser login (opens browser window)',
-  'commands.auth.login.argument.id': 'Account ID',
   'commands.auth.login.success': '✓ Login successful',
   'commands.auth.login.failed': '✗ Login failed: {error}',
 

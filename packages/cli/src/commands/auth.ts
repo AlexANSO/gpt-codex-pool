@@ -44,56 +44,6 @@ function extractEmailFromJWT(payload: Record<string, unknown> | null): string | 
   return null;
 }
 
-const loginManual = new Command('login-manual')
-  .description('Authenticate a specific account using OAuth (manual mode)')
-  .argument('<accountId>', 'Account ID to authenticate')
-  .action(async (accountId) => {
-    const manager = new PoolManager();
-    await manager.initialize();
-
-    const account = manager.getAccount(accountId);
-    if (!account) {
-      console.log(chalk.red(`Account ${accountId} not found`));
-      console.log(chalk.gray('Run "codex-pool account list" to see available accounts'));
-      process.exit(1);
-    }
-
-    console.log(chalk.blue(`\\nAuthenticating account: ${account.email}\\n`));
-
-    const authManager = new AuthManager();
-
-    try {
-      const result = await authManager.startInteractiveLogin();
-
-      if (!result.success || !result.session) {
-        console.log(chalk.red(`\\n✗ Login failed: ${result.error}`));
-        process.exit(1);
-      }
-
-      const spinner = ora('Storing credentials...').start();
-      
-      await manager.storeCredentials({
-        accountId: account.id,
-        storageState: result.session.storageState,
-        accessToken: result.session.accessToken,
-        sessionCookies: result.session.cookies,
-        expiresAt: result.session.expiresAt,
-        createdAt: new Date()
-      });
-
-      spinner.succeed('Credentials stored securely');
-      console.log(chalk.green('\\n✓ Login successful!'));
-      console.log(chalk.gray(`Session expires: ${result.session.expiresAt?.toISOString() || 'Unknown'}`));
-
-    } catch (error) {
-      console.log(chalk.red('Login failed'));
-      console.error(chalk.red(error instanceof Error ? error.message : String(error)));
-      process.exit(1);
-    } finally {
-      await authManager.close();
-    }
-  });
-
 const validate = new Command('validate')
   .description('Validate stored session for an account')
   .argument('<accountId>', 'Account ID to validate')
@@ -249,4 +199,4 @@ const login = new Command('login')
     }
   });
 
-export const authCommands = { login, loginManual, validate, logout };
+export const authCommands = { login, validate, logout };

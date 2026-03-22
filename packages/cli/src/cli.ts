@@ -2,7 +2,6 @@ import { Command } from 'commander';
 import { resolveLanguage } from './services/config-store.js';
 import { setLanguage, t } from './i18n/index.js';
 import { getVersion } from './utils/version.js';
-import { PoolManager } from './utils/pool-manager.js';
 import chalk from 'chalk';
 
 async function main() {
@@ -14,13 +13,6 @@ async function main() {
   const { quotaCommands } = await import('./commands/quota.js');
   const { poolCommands } = await import('./commands/pool.js');
   const { debugCommands } = await import('./commands/debug.js');
-
-  const manager = new PoolManager();
-  await manager.initialize();
-
-  setInterval(() => {
-    manager.getPool().cleanupExpiredLeases();
-  }, 60000);
 
   const program = new Command();
 
@@ -60,7 +52,6 @@ ${t('cli.help.examplesTitle')}
 
   ${chalk.bold('认证管理:')}
   $ codex-pool auth login                           自动登录并创建账号
-  $ codex-pool auth login-manual <account-id>       为指定账号登录
   $ codex-pool auth validate <account-id>           验证 Session 有效性
   $ codex-pool auth logout <account-id>             删除凭证并登出
 
@@ -85,7 +76,6 @@ ${t('cli.help.commandsTitle')}
 
   auth
     login                     ${t('cli.help.authLogin')}
-    login-manual <id>         ${t('cli.help.authLoginManual')}
     validate <id>             ${t('cli.help.authValidate')}
     logout <id>               ${t('cli.help.authLogout')}
 
@@ -116,7 +106,6 @@ ${t('cli.help.commandsTitle')}
     .command('auth')
     .description(t('commands.auth.description'))
     .addCommand(authCommands.login)
-    .addCommand(authCommands.loginManual)
     .addCommand(authCommands.validate)
     .addCommand(authCommands.logout);
 
