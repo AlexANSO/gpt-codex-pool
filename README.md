@@ -1,26 +1,28 @@
+[简体中文](./README-cn.md)
+
 # gpt-codex-pool
 
-GPT Plus/Pro 账号池管理工具 - 管理多个 ChatGPT 账号的 Codex 额度。
+GPT Plus/Pro account pool manager for tracking and rotating ChatGPT accounts for Codex usage.
 
-我自己也是因为有多个账号需要来回切换，而且懒得反复查看每个账号到底还剩多少 Codex 额度，所以开发了这个工具。
+I built this because I also have multiple accounts to switch between, and I did not want to keep checking each one manually just to see how much Codex quota was left.
 
-它可以方便地在 OpenCode 中切换和管理账号，并实时查看各账号的 Codex 额度使用情况。
+This tool makes it easier to switch and manage accounts in OpenCode while monitoring Codex quota usage in real time.
 
-基于 [opencode-openai-codex-auth](https://github.com/numman-ali/opencode-openai-codex-auth) 的设计理念构建。
+Built around the design ideas from [opencode-openai-codex-auth](https://github.com/numman-ali/opencode-openai-codex-auth).
 
-## 功能特性
+## Features
 
-- **多账号管理**：支持添加、删除、启用/禁用多个 ChatGPT Plus/Pro 账号
-- **浏览器登录**：通过 Playwright 自动化浏览器登录，安全获取 Session
-- **额度监控**：实时监控每个账号的 Codex 短/长期额度使用情况
-- **健康检查**：自动检测账号状态，标记需要重新认证的账号
-- **账号轮换**：支持加权、轮询、最少使用等轮换策略
-- **租约管理**：支持账号租约获取和释放，防止冲突使用
-- **加密存储**：所有凭证使用 AES-256-GCM 加密存储
+- **Multi-account management**: add, remove, enable, and disable multiple ChatGPT Plus/Pro accounts
+- **Browser login**: use Playwright-based browser automation to securely obtain sessions
+- **Quota monitoring**: monitor short-term and long-term Codex quota usage for each account
+- **Health checks**: detect account status automatically and flag accounts that need re-authentication
+- **Account rotation**: support weighted, round-robin, and least-used rotation strategies
+- **Lease management**: acquire and release account leases to avoid conflicts
+- **Encrypted storage**: store all credentials with AES-256-GCM encryption
 
-## 效果预览
+## Preview
 
-### 账号列表
+### Account List
 
 ```bash
 $ codex-pool account list
@@ -35,292 +37,308 @@ acc_abcdef1234567890      work@example.com               active       pro      9
 Total: 2 accounts
 ```
 
-### 切换账号后查看当前账号
+### Current Account After Switching
 
 ```bash
-$ codex-pool pool current
+$ codex-pool pool current --lang en
 
-当前 OpenCode 账号
+Current OpenCode Account
 ============================================================
 ID:           acc_abcdef1234567890
-标签:        Work GPT Pro
-邮箱:        work@example.com
-套餐:         pro
-状态:       活跃
-健康度:       95%
+Label:        Work GPT Pro
+Email:        work@example.com
+Tier:         pro
+Status:       Active
+Health:       95%
 
-Token Expires: 2026年3月26日 14:03
-  ✓ 有效期还有 161 小时
+Token Expires: Mar 26, 2026, 14:03
+  ✓ Valid for another 161 hours
 
-额度:
-  5小时剩余: 89%
-  周剩余: 99%
-  Code Review 剩余: 100%
+Quota:
+  5h Remaining: 89%
+  Weekly Remaining: 99%
+  Code Review Remaining: 100%
 
-上次切换: 2026年3月19日 19:29
-  (1小时 ago)
-使用次数:    5
+Last Switched: Mar 19, 2026, 19:29
+  (1h ago)
+Times Used:    5
 ============================================================
 ```
 
-## 快速开始
+## Quick Start
 
-### 安装
+### Installation
 
 ```bash
-# 克隆仓库
+# Clone the repository
 git clone https://github.com/yourusername/gpt-codex-pool.git
 cd gpt-codex-pool
 
-# 安装依赖
+# Install dependencies
 npm install
 
-# 构建项目
+# Build the project
 npm run build
 
-# 链接 CLI（可选）
+# Link the CLI (optional)
 cd packages/cli
 npm link
 ```
 
-### 配置环境变量
+### Environment Variables
 
 ```bash
-# 设置加密密钥（必需）
+# Set the encryption key (required)
 export CODEX_POOL_MASTER_KEY="your-secure-master-key-min-32-chars"
 
-# 添加到 ~/.bashrc 或 ~/.zshrc
+# Add it to ~/.bashrc or ~/.zshrc
 ```
 
-详细环境配置请参考 [docs/environment.md](docs/environment.md)。
+For full environment setup, see [docs/environment.md](docs/environment.md).
 
-### 基本使用
+### Basic Usage
 
 ```bash
-# 1. 添加账号
-codex-pool account add -e "your@email.com" -l "My GPT Plus" -t plus
+# 1. Log in with the browser and auto-create the account
+codex-pool auth login
 
-# 2. 浏览器登录获取凭证
-codex-pool auth login <account-id>
-
-# 3. 查看账号列表
+# 2. List accounts
 codex-pool account list
 
-# 4. 检查额度
+# 3. Check quota
 codex-pool quota check <account-id>
 
-# 5. 监控所有账号额度
+# 4. Monitor quota for all accounts
 codex-pool quota monitor
 
-# 6. 选择账号使用
+# 5. Select an account for use
 codex-pool pool rotate
 
-# 7. 查看当前使用的账号
+# 6. Show the current active account
 codex-pool pool current
 
-# 8. 查看池状态
+# 7. Show pool status
 codex-pool pool status
 ```
 
-更多使用示例请参考 [docs/examples.md](docs/examples.md)。
+For more examples, see [docs/examples.md](docs/examples.md).
 
-## CLI 命令参考
-
-### 账号管理
+### Recommended Flow
 
 ```bash
-# 添加账号
-codex-pool account add -e <email> -l <label> -t <plus|pro> --tags tag1,tag2
+# 1. Log in with the browser
+codex-pool auth login
 
-# 列出账号
+# 2. Find the newly created or updated account ID
+codex-pool account list
+
+# 3. Validate that the session is usable
+codex-pool auth validate <account-id>
+
+# 4. Check whether the quota looks healthy
+codex-pool quota check <account-id>
+
+# 5. Switch OpenCode to that account
+codex-pool pool use <account-id>
+
+# 6. Confirm which account is currently active
+codex-pool pool current
+```
+
+## CLI Reference
+
+### Account Management
+
+```bash
+# List accounts
 codex-pool account list
 codex-pool account list -s active
 
-# 查看详情
+# Show details
 codex-pool account show <account-id>
 
-# 删除账号
+# Remove an account
 codex-pool account remove <account-id>
 codex-pool account remove <account-id> --force
 
-# 启用/禁用
+# Enable or disable an account
 codex-pool account enable <account-id>
 codex-pool account disable <account-id>
 ```
 
-### 认证管理
+### Authentication
 
 ```bash
-# 浏览器登录（会打开浏览器窗口）
-codex-pool auth login <account-id>
+# Browser login (opens a browser window and creates or updates the account)
+codex-pool auth login
 
-# 验证 Session 有效性
+# Validate a stored session
 codex-pool auth validate <account-id>
 
-# 删除凭证
+# Remove stored credentials
 codex-pool auth logout <account-id>
 ```
 
-### 额度管理
+### Quota Management
 
 ```bash
-# 检查单个账号额度
+# Check quota for a single account
 codex-pool quota check <account-id>
 
-# 监控所有账号（实时刷新）
+# Monitor all accounts in real time
 codex-pool quota monitor
-codex-pool quota monitor -i 30  # 30秒刷新一次
+codex-pool quota monitor -i 30  # refresh every 30 seconds
 ```
 
-### 池管理
+### Pool Management
 
 ```bash
-# 查看池状态
+# Show pool status
 codex-pool pool status
 
-# 查看当前 OpenCode 使用的账号
+# Show the current OpenCode account
 codex-pool pool current
 
-# 选择账号（获取租约）
+# Select an account (acquire a lease)
 codex-pool pool rotate
-codex-pool pool rotate -p "My Script" --consumer "worker-1"
+codex-pool pool use <account-id>
 
-# 查看租约列表
+# List leases
 codex-pool pool lease list
 
-# 释放租约
+# Release a lease
 codex-pool pool lease release <lease-id>
 ```
 
-## 架构设计
+## Architecture
 
-### 项目结构
+### Project Structure
 
 ```
 gpt-codex-pool/
 ├── packages/
-│   ├── core/           # 核心逻辑（账号池、加密、额度解析）
-│   ├── browser/        # 浏览器自动化
-│   └── cli/            # 命令行界面
-├── docs/               # 文档
-├── AGENTS.md           # 项目知识库（AI 辅助开发指南）
-├── packages/core/AGENTS.md      # Core 包知识库
-├── packages/cli/AGENTS.md       # CLI 包知识库
-├── packages/browser/AGENTS.md   # Browser 包知识库
+│   ├── core/           # Core logic (account pool, encryption, quota parsing)
+│   ├── browser/        # Browser automation
+│   └── cli/            # Command-line interface
+├── docs/               # Documentation
+├── AGENTS.md           # Project knowledge base (AI-assisted development guide)
+├── packages/core/AGENTS.md      # Core package knowledge base
+├── packages/cli/AGENTS.md       # CLI package knowledge base
+├── packages/browser/AGENTS.md   # Browser package knowledge base
 └── README.md
 ```
 
-### 核心组件
+### Core Components
 
-1. **AccountPool**: 管理账号集合，支持健康检查、冷却、轮换策略
-2. **CredentialStorage**: 加密存储和检索账号凭证
-3. **ChatGPTAuthBrowser**: Playwright 浏览器自动化
-4. **CodexQuotaParser**: 解析 Codex 额度信息
-5. **EncryptionService**: AES-256-GCM 加密服务
+1. **AccountPool**: manages account sets, health checks, cooldowns, and rotation strategy
+2. **CredentialStorage**: securely stores and retrieves account credentials
+3. **ChatGPTAuthBrowser**: Playwright browser automation for login
+4. **CodexQuotaParser**: parses Codex quota information
+5. **EncryptionService**: AES-256-GCM encryption service
 
-### 依赖关系
+### Dependencies
 
 ```
 CLI (@codex-pool/cli)
-├── @codex-pool/core      # 账号池、加密、额度解析
-├── @codex-pool/browser   # 浏览器自动化
-└── commander, chalk, ora # CLI 工具
+├── @codex-pool/core      # Account pool, encryption, quota parsing
+├── @codex-pool/browser   # Browser automation
+└── commander, chalk, ora # CLI utilities
 
 Browser (@codex-pool/browser)
-├── @codex-pool/core      # 类型定义
-└── playwright            # 浏览器自动化
+├── @codex-pool/core      # Type definitions
+└── playwright            # Browser automation
 
 Core (@codex-pool/core)
-├── zod                   # 运行时验证
-└── nanoid                # ID 生成
+├── zod                   # Runtime validation
+└── nanoid                # ID generation
 ```
 
-### 安全特性
+### Security Features
 
-- 所有凭证使用 AES-256-GCM 加密
-- Master Key 通过环境变量提供，不存储在代码中
-- 支持 PBKDF2 密钥派生
-- Session 文件权限严格限制
+- All credentials are encrypted with AES-256-GCM
+- The master key is provided through an environment variable and is not stored in code
+- PBKDF2 key derivation is supported
+- Session file permissions are kept restrictive
 
-## 开发指南
+## Development Guide
 
-### 开发环境
+### Development Environment
 
 ```bash
-# 安装依赖
+# Install dependencies
 npm install
 
-# 开发模式（监听文件变化）
+# Development mode (watch files)
 npm run dev
 
-# 构建
+# Build
 npm run build
 
-# TypeScript 类型检查
+# TypeScript typecheck
 npm run typecheck
 
-# 代码检查
+# Lint
 npm run lint
 ```
 
-### 项目约定
+### Project Conventions
 
-本项目遵循以下开发约定：
+This project follows these conventions:
 
-- **命名**: Classes 使用 PascalCase，methods 使用 camelCase，private 成员使用 `_` 前缀
-- **导入**: 相对路径使用 `.js` 扩展名（ESM 兼容），Node.js 内置模块使用 `node:` 前缀
-- **类型**: 所有公共 API 使用显式返回类型，`null` 表示"无结果"，`undefined` 表示可选
+- **Naming**: classes use PascalCase, methods use camelCase, and private members use the `_` prefix
+- **Imports**: relative paths use the `.js` extension for ESM compatibility, and Node.js built-ins use the `node:` prefix
+- **Types**: all public APIs use explicit return types, `null` means "no result", and `undefined` means optional
 
-详细约定请参考 [AGENTS.md](AGENTS.md) 及各子包的 AGENTS.md 文件。
+See [AGENTS.md](AGENTS.md) and the AGENTS files under each package for more details.
 
-### 开发状态
+### Development Status
 
-**当前版本**: v1.0.0
+**Current version**: v1.0.0
 
-**已知限制**:
-- 测试覆盖率：待添加（基础设施准备中）
-- 日志系统：使用 console（结构化日志准备中）
-- 配置验证：使用 TypeScript 类型（Zod schema 准备中）
+**Known limitations**:
+- Test coverage: not added yet (infrastructure is still being prepared)
+- Logging: still using `console` (structured logging is planned)
+- Config validation: still using TypeScript types (Zod schema work is planned)
 
-### 相关文档
+### Related Documentation
 
-- [AGENTS.md](AGENTS.md) - 项目知识库（架构、约定、代码地图）
-- [docs/environment.md](docs/environment.md) - 环境变量配置指南
-- [docs/examples.md](docs/examples.md) - 使用示例和场景
+- [AGENTS.md](AGENTS.md) - project knowledge base (architecture, conventions, code map)
+- [docs/environment.md](docs/environment.md) - environment variable setup guide
+- [docs/examples.md](docs/examples.md) - usage examples and scenarios
 
-## 注意事项
+## Notes
 
-1. **个人使用**：本工具仅适用于个人管理自己的 ChatGPT Plus/Pro 账号
-2. **遵守 ToS**：使用本工具时请遵守 OpenAI 的服务条款
-3. **安全存储**：请妥善保管 `CODEX_POOL_MASTER_KEY`，丢失后无法解密凭证
-4. **Session 有效期**：ChatGPT Session 通常有有效期，需要定期重新登录
+1. **Personal use**: this tool is intended for managing your own ChatGPT Plus/Pro accounts
+2. **Follow the ToS**: please use this tool in accordance with OpenAI's terms of service
+3. **Secure storage**: keep `CODEX_POOL_MASTER_KEY` safe, because losing it means your credentials cannot be decrypted
+4. **Session lifetime**: ChatGPT sessions usually expire and need periodic re-login
 
-## 故障排除
+## Troubleshooting
 
-### Session 失效
+### Session Expired
 
 ```bash
-# 验证 Session
+# Validate the session
 codex-pool auth validate <account-id>
 
-# 如果失效，重新登录
-codex-pool auth login <account-id>
+# Log in again if needed
+codex-pool auth login
 ```
 
-### 额度耗尽
+### Quota Exhausted
 
-账号会进入 `cooldown` 状态，系统会自动轮换到其他可用账号。
+The account will enter `cooldown`, and the system will rotate to other available accounts automatically.
 
-### 浏览器登录失败
+### Browser Login Failed
 
-- 确保网络可以访问 ChatGPT
-- 检查是否有验证码需要人工完成
-- 尝试非 headless 模式（默认）
+- Make sure your network can access ChatGPT
+- Check whether a captcha or manual verification is required
+- Try the default non-headless flow
 
-## 许可证
+## License
 
-MIT License - 详见 [LICENSE](LICENSE)
+MIT License - see [LICENSE](LICENSE) for details.
 
-## 免责声明
+## Disclaimer
 
-本项目是独立开源项目，与 OpenAI 无关。ChatGPT、GPT-5、Codex 是 OpenAI 的商标。
+This project is an independent open source project and is not affiliated with OpenAI. ChatGPT, GPT-5, and Codex are trademarks of OpenAI.
