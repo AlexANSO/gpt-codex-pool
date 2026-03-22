@@ -270,9 +270,9 @@ const current = new Command('current')
       }
 
       if (stateInfo.lastSwitchedAt) {
-        const hoursAgo = Math.floor((Date.now() - stateInfo.lastSwitchedAt.getTime()) / (1000 * 60 * 60));
+        const secondsAgo = Math.floor((Date.now() - stateInfo.lastSwitchedAt.getTime()) / 1000);
         console.log(`\n${chalk.gray(t('labels.lastSwitched') + ':')} ${formatDateTime(stateInfo.lastSwitchedAt)}`);
-        console.log(chalk.gray(`  (${formatDuration(hoursAgo)} ago)`));
+        console.log(chalk.gray(`  (${formatDuration(secondsAgo)} ago)`));
       }
 
       if (stateInfo.totalSelections) {
@@ -306,7 +306,7 @@ const legacyRotate = new Command('legacy-rotate')
       process.exit(1);
     }
 
-    const lease = pool.acquireLease(account.id, options.consumer, options.purpose || 'cli-request');
+    const lease = manager.acquireLease(account.id, options.consumer, options.purpose || 'cli-request');
     
     if (!lease) {
       console.log(chalk.red('Failed to acquire lease'));
@@ -321,7 +321,7 @@ const legacyRotate = new Command('legacy-rotate')
     console.log(`  Lease ID: ${lease.id}`);
     
     console.log(chalk.gray('\nUse this account for your request.'));
-    console.log(chalk.gray(`Release lease with: codex-pool pool release ${lease.id}`));
+    console.log(chalk.gray(`Release lease with: codex-pool pool lease release ${lease.id}`));
   });
 
 const lease = new Command('lease')
@@ -333,17 +333,8 @@ const leaseList = new Command('list')
     const manager = new PoolManager();
     await manager.initialize();
 
-    const pool = manager.getPool();
     const accounts = manager.getAllAccounts();
-    
-    const allLeases: Array<{
-      id: string;
-      accountId: string;
-      consumerId: string;
-      purpose: string;
-      startedAt: Date;
-      lastHeartbeatAt: Date;
-    }> = [];
+    const allLeases = manager.getAllLeases().filter(lease => lease.status === 'active');
 
     console.log(chalk.bold('\nActive Leases'));
     console.log('='.repeat(100));
@@ -376,8 +367,7 @@ const leaseRelease = new Command('release')
     const manager = new PoolManager();
     await manager.initialize();
 
-    const pool = manager.getPool();
-    const released = pool.releaseLease(leaseId);
+    const released = manager.releaseLease(leaseId);
 
     if (released) {
       console.log(chalk.green(`✓ Lease ${leaseId} released`));

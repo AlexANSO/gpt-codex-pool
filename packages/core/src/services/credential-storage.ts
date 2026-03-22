@@ -34,7 +34,8 @@ export class CredentialStorage {
       accessToken: credentials.accessToken,
       refreshToken: credentials.refreshToken,
       sessionCookies: credentials.sessionCookies,
-      expiresAt: credentials.expiresAt
+      expiresAt: credentials.expiresAt,
+      createdAt: credentials.createdAt
     });
 
     const encrypted = await this.encryption.encrypt(data);
@@ -73,7 +74,7 @@ export class CredentialStorage {
         refreshToken: data.refreshToken,
         sessionCookies: data.sessionCookies,
         expiresAt: data.expiresAt ? new Date(data.expiresAt) : undefined,
-        createdAt: new Date()
+        createdAt: data.createdAt ? new Date(data.createdAt) : new Date()
       };
     } catch (error) {
       throw new Error(`Failed to retrieve credentials for ${accountId}: ${error instanceof Error ? error.message : String(error)}`);

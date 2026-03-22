@@ -16,6 +16,24 @@ export class AccountPool {
     this.accounts.set(account.id, account);
   }
 
+  removeAccount(id: string): boolean {
+    const removed = this.accounts.delete(id);
+    if (!removed) {
+      return false;
+    }
+
+    this.healthChecks.delete(id);
+    this.quotas.delete(id);
+
+    for (const [leaseId, lease] of this.leases.entries()) {
+      if (lease.accountId === id) {
+        this.leases.delete(leaseId);
+      }
+    }
+
+    return true;
+  }
+
   getAccount(id: string): Account | undefined {
     return this.accounts.get(id);
   }
@@ -24,10 +42,23 @@ export class AccountPool {
     return Array.from(this.accounts.values());
   }
 
+  getAllLeases(): Lease[] {
+    return Array.from(this.leases.values());
+  }
+
+  restoreLease(lease: Lease): void {
+    this.leases.set(lease.id, lease);
+  }
+
   getActiveAccounts(): Account[] {
-    return this.getAllAccounts().filter(a => 
-      a.status === 'active' || a.status === 'degraded'
-    );
+    const now = new Date();
+    return this.getAllAccounts().filter(a => {
+      if (a.status === 'active' || a.status === 'degraded') {
+        return true;
+      }
+
+      return a.status === 'cooldown' && (!!a.cooldownUntil ? a.cooldownUntil <= now : true);
+    });
   }
 
   getHealthyAccounts(): Account[] {
@@ -45,6 +76,10 @@ export class AccountPool {
     
     account.status = status;
     account.updatedAt = new Date();
+
+    if (status !== 'cooldown') {
+      account.cooldownUntil = undefined;
+    }
     
     if (reason) {
       account.notes = reason;
@@ -56,7 +91,9 @@ export class AccountPool {
     if (!account) throw new Error(`Account ${id} not found`);
     
     const cooldownMs = durationMs || this.config.defaultCooldownMs;
-    account.cooldownUntil = new Date(Date.now() + cooldownMs);
+    const nextCooldownUntil = Date.now() + cooldownMs;
+    const existingCooldownUntil = account.cooldownUntil?.getTime() || 0;
+    account.cooldownUntil = new Date(Math.max(existingCooldownUntil, nextCooldownUntil));
     account.status = 'cooldown';
     account.updatedAt = new Date();
   }
@@ -78,7 +115,11 @@ export class AccountPool {
       
       if (check.status === 'unhealthy') {
         account.status = 'degraded';
+      } else if (check.status === 'healthy' && account.status === 'degraded') {
+        account.status = 'active';
       }
+
+      account.updatedAt = check.checkedAt;
     }
   }
 
@@ -100,7 +141,7 @@ export class AccountPool {
 
   acquireLease(accountId: string, consumerId: string, purpose: string): Lease | null {
     const account = this.accounts.get(accountId);
-    if (!account) return null;
+    if (!account || !this.isAccountAvailable(account)) return null;
     
     const activeLeases = this.getActiveLeasesForAccount(accountId);
     if (activeLeases.length >= this.config.maxLeasesPerAccount) {
@@ -108,7 +149,7 @@ export class AccountPool {
     }
 
     const lease: Lease = {
-      id: `lease_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: `lease_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
       accountId,
       consumerId,
       purpose,
@@ -185,6 +226,7 @@ export class AccountPool {
   private isAccountAvailable(account: Account): boolean {
     if (account.status !== 'active' && account.status !== 'degraded') return false;
     if (account.cooldownUntil && account.cooldownUntil > new Date()) return false;
+    if (account.healthScore < 50) return false;
     return true;
   }
 
