@@ -1,4 +1,4 @@
-# Example: Adding and Managing Accounts
+# Example: Logging In and Managing Accounts
 
 ## Scenario 1: Single Account Setup
 
@@ -6,46 +6,35 @@
 # 1. Set your encryption key
 export CODEX_POOL_MASTER_KEY="my-super-secret-master-key-32-chars-long"
 
-# 2. Add your account
-codex-pool account add \
-  -e "my.email@gmail.com" \
-  -l "Personal GPT Plus" \
-  -t plus \
-  --tags "personal,primary"
-
-# Output: Account added successfully
-# ID: abc123xyz
-
-# 3. Login to get credentials
-codex-pool auth login abc123xyz
+# 2. Login in the browser
+codex-pool auth login
 # (Browser window opens, login manually)
 
-# 4. Check quota
+# Output includes the created/updated account ID, e.g. abc123xyz
+
+# 3. Check quota
 codex-pool quota check abc123xyz
 
-# 5. View account details
+# 4. View account details
 codex-pool account show abc123xyz
 ```
 
 ## Scenario 2: Multiple Accounts for Load Balancing
 
 ```bash
-# Add multiple accounts
-codex-pool account add -e "account1@company.com" -l "Work Account 1" -t pro --tags "work,high-priority"
-codex-pool account add -e "account2@company.com" -l "Work Account 2" -t pro --tags "work,high-priority"
-codex-pool account add -e "personal@gmail.com" -l "Personal" -t plus --tags "personal,low-priority"
+# Login once per account in the browser
+codex-pool auth login   # account1@company.com
+codex-pool auth login   # account2@company.com
+codex-pool auth login   # personal@gmail.com
 
 # Set different priorities (higher = preferred)
 # (Edit accounts.json or use API)
 
-# Login to all
-codex-pool account list -s draft
-for id in $(codex-pool account list -s draft | awk '{print $1}'); do
-  codex-pool auth login $id
-done
+# Review the created accounts
+codex-pool account list
 
 # Use rotation to distribute load
-codex-pool pool rotate --consumer "my-app" -p "Batch processing"
+codex-pool pool rotate
 ```
 
 ## Scenario 3: Monitoring and Alerting

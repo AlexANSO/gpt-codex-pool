@@ -44,5 +44,4 @@ if (!existsSync(accountsFile)) {
 console.log('\\n✅ Setup complete!');
 console.log('\\nNext steps:');
 console.log('  1. Source the environment: source ~/.codex-pool/.env');
-console.log('  2. Add an account: codex-pool account add -e your@email.com');
-console.log('  3. Login: codex-pool auth login <account-id>');
+console.log('  2. Login in browser to create an account: codex-pool auth login');
