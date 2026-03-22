@@ -2,15 +2,35 @@ node_modules/
 dist/
 .env
 .env.local
+.env.production
+.env.*
+!.env.example
 *.log
+logs/
 .DS_Store
 *.enc
 *.tsbuildinfo
 .temp/
+*.tmp
+*.temp
 .codex-pool/
 coverage/
 *.tgz
 *.tar.gz
+*.db
+*.sqlite
+*.sqlite3
+data/hetong.db
+files/official/*.docx
+files/final/*.docx
+files/preview/*.docx
+.vscode/
+.idea/
+*.swp
+*.swo
+tests/output/
+tests/fixtures/temp/
+docs/generated/*.md
 
 # AI/internal guidance
 AGENTS.md
