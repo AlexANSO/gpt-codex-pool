@@ -1,9 +1,10 @@
 import { Command } from 'commander';
 import { PoolManager } from '../utils/pool-manager.js';
-import { refreshAccessToken } from '@codex-pool/browser';
+import { formatDuration } from '../i18n/index.js';
+import { TokenValidator } from '../services/token-validator.js';
 import chalk from 'chalk';
 
-const WHAM_API_URL = 'https://chatgpt.com/backend-api/wham/usage';
+const tokenValidator = new TokenValidator();
 
 const check = new Command('check')
   .description('Check account quota via API')
@@ -28,33 +29,17 @@ const check = new Command('check')
 
     console.log(chalk.blue(`\nAccount: ${account.email}`));
     console.log(chalk.blue('Fetching quota from API...\n'));
-    
-    let token = credentials.accessToken;
-    let quota = await fetchQuotaFromAPI(token);
-    
-    if (!quota && credentials.refreshToken) {
-      console.log(chalk.yellow('Token expired, refreshing...'));
-      const newSession = await refreshAccessToken(credentials.refreshToken);
-      if (newSession) {
-        await manager.storeCredentials({
-          accountId: account.id,
-          storageState: newSession.storageState,
-          accessToken: newSession.accessToken,
-          refreshToken: newSession.refreshToken,
-          sessionCookies: {},
-          expiresAt: newSession.expiresAt,
-          createdAt: new Date()
-        });
-        token = newSession.accessToken || token;
-        quota = await fetchQuotaFromAPI(token);
-      }
-    }
-    
-    if (quota) {
+
+    const result = await lookupQuota(manager, account.id, credentials);
+
+    if (result.quota) {
       console.log(chalk.green('✓ Quota retrieved\n'));
-      displayQuota(quota);
+      displayQuota(result.quota);
     } else {
-      console.log(chalk.red('✗ Failed to fetch quota'));
+      console.log(chalk.red(`✗ ${result.label}`));
+      if (result.details) {
+        console.log(chalk.gray(result.details));
+      }
       process.exit(1);
     }
   });
@@ -66,7 +51,13 @@ const monitor = new Command('monitor')
     const manager = new PoolManager();
     await manager.initialize();
 
-    const accounts = manager.getAllAccounts().filter(a => a.status === 'active');
+    const intervalSeconds = Number.parseInt(options.interval, 10);
+    if (!Number.isFinite(intervalSeconds) || intervalSeconds <= 0) {
+      console.log(chalk.red(`Invalid interval: ${options.interval}`));
+      process.exit(1);
+    }
+
+    const accounts = manager.getAllAccounts().filter(a => a.status === 'active' || a.status === 'degraded');
     
     if (accounts.length === 0) {
       console.log(chalk.yellow('No active accounts'));
@@ -89,6 +80,8 @@ const monitor = new Command('monitor')
       console.log(header);
       console.log('-'.repeat(header.length));
 
+      const accounts = manager.getAllAccounts().filter(a => a.status === 'active' || a.status === 'degraded');
+
       for (const account of accounts) {
         const credentials = await manager.getCredentials(account.id);
         
@@ -102,43 +95,43 @@ const monitor = new Command('monitor')
         }
 
         try {
-          const quota = await fetchQuotaFromAPI(credentials.accessToken);
-          if (quota) {
-            const shortColor = quota.shortRemaining < 10 ? chalk.red : quota.shortRemaining < 30 ? chalk.yellow : chalk.green;
-            const longColor = quota.longRemaining < 10 ? chalk.red : quota.longRemaining < 30 ? chalk.yellow : chalk.green;
+          const result = await lookupQuota(manager, account.id, credentials);
+          if (result.quota) {
+            const shortColor = result.quota.shortRemaining < 10 ? chalk.red : result.quota.shortRemaining < 30 ? chalk.yellow : chalk.green;
+            const longColor = result.quota.longRemaining < 10 ? chalk.red : result.quota.longRemaining < 30 ? chalk.yellow : chalk.green;
 
             console.log(
               `${account.id.padEnd(idColumnWidth)} ` +
               `${account.label.substring(0, 30).padEnd(accountColumnWidth)} ` +
-              `${shortColor(String(quota.shortUsed + '%').padEnd(10))} ` +
-              `${shortColor(String(quota.shortRemaining + '%').padEnd(10))} ` +
-              `${longColor(String(quota.longUsed + '%').padEnd(12))} ` +
-              `${longColor(String(quota.longRemaining + '%').padEnd(12))} ` +
-              `${quota.codeReviewRemaining}%`
+              `${shortColor(String(result.quota.shortUsed + '%').padEnd(10))} ` +
+              `${shortColor(String(result.quota.shortRemaining + '%').padEnd(10))} ` +
+              `${longColor(String(result.quota.longUsed + '%').padEnd(12))} ` +
+              `${longColor(String(result.quota.longRemaining + '%').padEnd(12))} ` +
+              `${result.quota.codeReviewRemaining}%`
             );
           } else {
             console.log(
               `${account.id.padEnd(idColumnWidth)} ` +
               `${account.label.substring(0, 30).padEnd(accountColumnWidth)} ` +
-              `${chalk.red('API Error'.padEnd(10))}`
+              `${chalk.red(result.label.padEnd(10))}`
             );
           }
-        } catch {
+        } catch (error) {
           console.log(
             `${account.id.padEnd(idColumnWidth)} ` +
             `${account.label.substring(0, 30).padEnd(accountColumnWidth)} ` +
-            `${chalk.red('Error'.padEnd(10))}`
+            `${chalk.red((error instanceof Error ? error.message : 'Error').slice(0, 10).padEnd(10))}`
           );
         }
       }
 
       console.log('='.repeat(header.length));
-      console.log(chalk.gray(`Next update in ${options.interval}s...`));
+      console.log(chalk.gray(`Next update in ${intervalSeconds}s...`));
     };
 
     await monitorOnce();
     
-    const interval = setInterval(monitorOnce, parseInt(options.interval) * 1000);
+    const interval = setInterval(monitorOnce, intervalSeconds * 1000);
     
     process.on('SIGINT', () => {
       clearInterval(interval);
@@ -158,68 +151,68 @@ interface QuotaData {
   longResetAfter: number;
 }
 
-interface WhamUsageResponse {
-  rate_limit?: {
-    primary_window?: {
-      used_percent?: number;
-      reset_after_seconds?: number;
-    };
-    secondary_window?: {
-      used_percent?: number;
-      reset_after_seconds?: number;
-    };
-  };
-  code_review_rate_limit?: {
-    primary_window?: {
-      used_percent?: number;
-    };
-  };
+interface QuotaLookupResult {
+  quota?: QuotaData;
+  label: string;
+  details?: string;
 }
 
-async function fetchQuotaFromAPI(accessToken: string): Promise<QuotaData | null> {
+async function lookupQuota(
+  manager: PoolManager,
+  accountId: string,
+  credentials: NonNullable<Awaited<ReturnType<PoolManager['getCredentials']>>>
+): Promise<QuotaLookupResult> {
   try {
-    const url = new URL(WHAM_API_URL);
-    url.searchParams.append('_t', Date.now().toString());
-
-    const response = await fetch(url.toString(), {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Accept': '*/*',
-        'Accept-Language': 'zh-CN,zh;q=0.9',
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Oai-Client-Build-Number': '5298191',
-        'Oai-Client-Version': 'prod',
-        'Oai-Device-Id': 'a2627114-a2f6-48f5-9460-a8885314d15d',
-        'Oai-Language': 'zh-CN',
-        'Referer': 'https://chatgpt.com/codex/settings/usage',
-        'Sec-Fetch-Dest': 'empty',
-        'Sec-Fetch-Mode': 'cors',
-        'Sec-Fetch-Site': 'same-origin',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-      }
+    const validation = await tokenValidator.validateOrRefresh(accountId, credentials, {
+      allowRefresh: true,
     });
 
-    if (!response.ok) {
-      console.error('API Error:', response.status);
-      return null;
+    if (validation.status === 'refreshed' && validation.accessToken && validation.expiresAt) {
+      await manager.storeCredentials({
+        ...credentials,
+        accountId,
+        accessToken: validation.accessToken,
+        refreshToken: validation.refreshToken || credentials.refreshToken,
+        expiresAt: validation.expiresAt,
+      });
     }
 
-    const data = await response.json() as WhamUsageResponse;
-    
+    if (validation.status === 'unauthorized') {
+      manager.updateAccountStatus(accountId, 'reauth_required', validation.error || 'Token validation failed');
+      return { label: 'Reauth', details: validation.error };
+    }
+
+    if (validation.status === 'rate_limited') {
+      manager.setCooldown(accountId);
+      return { label: 'Cooldown', details: validation.error };
+    }
+
+    if (validation.status === 'network_error') {
+      return { label: 'Network', details: validation.error };
+    }
+
+    if (validation.status === 'server_error') {
+      return { label: 'API Error', details: validation.error };
+    }
+
+    if (!validation.quota) {
+      return { label: 'No quota', details: 'Quota data was not returned by validation.' };
+    }
+
+    const account = manager.getAccount(accountId);
+    if (account && (account.status === 'cooldown' || account.status === 'reauth_required')) {
+      manager.updateAccountStatus(accountId, 'active');
+    }
+
     return {
-      shortUsed: data.rate_limit?.primary_window?.used_percent || 0,
-      shortRemaining: 100 - (data.rate_limit?.primary_window?.used_percent || 0),
-      longUsed: data.rate_limit?.secondary_window?.used_percent || 0,
-      longRemaining: 100 - (data.rate_limit?.secondary_window?.used_percent || 0),
-      codeReviewUsed: data.code_review_rate_limit?.primary_window?.used_percent || 0,
-      codeReviewRemaining: 100 - (data.code_review_rate_limit?.primary_window?.used_percent || 0),
-      shortResetAfter: data.rate_limit?.primary_window?.reset_after_seconds || 0,
-      longResetAfter: data.rate_limit?.secondary_window?.reset_after_seconds || 0
+      label: validation.status === 'refreshed' ? 'Refreshed' : 'OK',
+      quota: validation.quota,
     };
   } catch (error) {
-    console.error('Fetch error:', error);
-    return null;
+    return {
+      label: 'Error',
+      details: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -246,13 +239,6 @@ function displayQuota(quota: QuotaData) {
                     chalk.green('HEALTHY');
   
   console.log(`Status: Short ${shortStatus}, Long ${longStatus}`);
-}
-
-function formatDuration(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  return `${minutes}m`;
 }
 
 export const quotaCommands = { check, monitor };

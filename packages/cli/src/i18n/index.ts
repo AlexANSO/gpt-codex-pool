@@ -36,13 +36,21 @@ export function formatDateTime(date: Date): string {
   }).format(date);
 }
 
-export function formatDuration(hours: number): string {
+export function formatDuration(seconds: number): string {
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(hours / 24);
+  const minutes = totalMinutes % 60;
+
   if (currentLanguage === 'zh-CN') {
-    if (hours < 1) return '小于1小时';
-    if (hours < 24) return `${Math.floor(hours)}小时`;
-    return `${Math.floor(hours / 24)}天`;
+    if (totalMinutes < 1) return '小于1分钟';
+    if (hours < 1) return `${totalMinutes}分钟`;
+    if (days < 1) return minutes > 0 ? `${hours}小时${minutes}分钟` : `${hours}小时`;
+    return minutes > 0 ? `${days}天${hours % 24}小时` : `${days}天`;
   }
-  if (hours < 1) return '< 1 hour';
-  if (hours < 24) return `${Math.floor(hours)} hours`;
-  return `${Math.floor(hours / 24)} days`;
+
+  if (totalMinutes < 1) return '< 1 minute';
+  if (hours < 1) return `${totalMinutes}m`;
+  if (days < 1) return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+  return hours % 24 > 0 ? `${days}d ${hours % 24}h` : `${days}d`;
 }

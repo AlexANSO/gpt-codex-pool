@@ -58,10 +58,12 @@ export class TokenValidator {
     options: ValidateOptions = {}
   ): Promise<TokenValidationResult> {
     const { minTtlMs = 120000, allowRefresh = true } = options;
+    void accountId;
     
     let token = credentials.accessToken;
     let refreshToken = credentials.refreshToken;
     let expiresAt = credentials.expiresAt;
+    let status: TokenValidationResult['status'] = 'valid';
 
     // Check if token is about to expire
     const now = Date.now();
@@ -74,13 +76,7 @@ export class TokenValidator {
           token = newSession.accessToken;
           refreshToken = newSession.refreshToken || refreshToken;
           expiresAt = newSession.expiresAt;
-          
-          return {
-            status: 'refreshed',
-            accessToken: token,
-            refreshToken,
-            expiresAt,
-          };
+          status = 'refreshed';
         }
       } catch (error) {
         return {
@@ -103,7 +99,7 @@ export class TokenValidator {
       
       if (quota) {
         return {
-          status: 'valid',
+          status,
           accessToken: token,
           refreshToken,
           expiresAt,
