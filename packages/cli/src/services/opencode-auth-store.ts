@@ -1,8 +1,7 @@
-import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, chmodSync, rmdirSync } from 'node:fs';
+import { mkdirSync, existsSync, readFileSync, writeFileSync, renameSync, chmodSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { createHash } from 'node:crypto';
-import type { AccountCredentials } from '@codex-pool/core';
 
 export interface OpenCodeOAuthAuth {
   type: 'oauth';
@@ -99,9 +98,13 @@ export class OpenCodeAuthStore {
         return null;
       }
       
-      return createHash('sha256').update(openai.access).digest('hex').slice(0, 16);
+      return this.getAccessTokenHash(openai.access);
     } catch {
       return null;
     }
+  }
+
+  getAccessTokenHash(accessToken: string): string {
+    return createHash('sha256').update(accessToken).digest('hex').slice(0, 16);
   }
 }

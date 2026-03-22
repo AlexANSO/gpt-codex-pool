@@ -78,14 +78,14 @@ export class OpenCodeSwitcher {
 
       if (validation.status === 'unauthorized') {
         if (!dryRun) {
-          await this.poolManager.updateAccountStatus(accountId, 'reauth_required', 'Token validation failed');
+          this.poolManager.updateAccountStatus(accountId, 'reauth_required', 'Token validation failed');
         }
         throw new Error(`Account ${accountId} token is unauthorized. Please re-authenticate.`);
       }
 
       if (validation.status === 'rate_limited') {
         if (!dryRun) {
-          await this.poolManager.updateAccountStatus(accountId, 'cooldown', 'Rate limited');
+          this.poolManager.setCooldown(accountId);
         }
         throw new Error(`Account ${accountId} is rate limited. Please try again later.`);
       }
@@ -125,6 +125,10 @@ export class OpenCodeSwitcher {
       throw new Error('Token validation returned incomplete data: missing accessToken, refreshToken, or expiresAt');
     }
 
+    if (!dryRun && (account.status === 'cooldown' || account.status === 'reauth_required')) {
+      this.poolManager.updateAccountStatus(accountId, 'active');
+    }
+
     // Prepare OpenCode auth payload
     const authPayload: OpenCodeOAuthAuth = {
       type: 'oauth',
@@ -154,7 +158,7 @@ export class OpenCodeSwitcher {
       const { backupPath } = this.authStore.writeOpenAIAuth(authPayload);
       
       // Update state
-      const authHash = this.authStore.getCurrentAuthHash() || '';
+      const authHash = this.authStore.getAccessTokenHash(authPayload.access);
       await this.stateStore.setCurrentAccount(accountId, authHash);
       await this.stateStore.updateUsage(accountId);
       await this.stateStore.resetFailures(accountId);
@@ -180,8 +184,8 @@ export class OpenCodeSwitcher {
     const { strategy = 'round-robin', excludeAccountIds = [] } = options;
 
     // Get all active accounts
-    let accounts = this.poolManager.getAllAccounts().filter(
-      a => (a.status === 'active' || a.status === 'degraded') && !excludeAccountIds.includes(a.id)
+    let accounts = this.poolManager.getPool().getHealthyAccounts().filter(
+      a => !excludeAccountIds.includes(a.id)
     );
 
     if (accounts.length === 0) {
@@ -216,9 +220,7 @@ export class OpenCodeSwitcher {
     const currentId = state.currentAccountId;
 
     // Get active accounts
-    let accounts = this.poolManager.getAllAccounts().filter(
-      a => a.status === 'active' || a.status === 'degraded'
-    );
+    let accounts = this.poolManager.getPool().getHealthyAccounts();
 
     if (accounts.length === 0) {
       throw new Error('No active accounts available');
@@ -263,7 +265,19 @@ export class OpenCodeSwitcher {
     let account: Account | null = null;
 
     if (state.currentAccountId) {
-      account = this.poolManager.getAccount(state.currentAccountId) || null;
+      const currentAccount = this.poolManager.getAccount(state.currentAccountId) || null;
+
+      if (currentAccount) {
+        try {
+          const credentials = await this.poolManager.getCredentials(currentAccount.id);
+          if (credentials?.accessToken) {
+            const hash = this.authStore.getAccessTokenHash(credentials.accessToken);
+            if (hash === currentAuthHash) {
+              account = currentAccount;
+            }
+          }
+        } catch {}
+      }
     }
 
     if (!account) {
@@ -272,7 +286,7 @@ export class OpenCodeSwitcher {
         try {
           const credentials = await this.poolManager.getCredentials(acc.id);
           if (credentials?.accessToken) {
-            const hash = this.authStore.getCurrentAuthHash();
+            const hash = this.authStore.getAccessTokenHash(credentials.accessToken);
             if (hash === currentAuthHash) {
               account = acc;
               break;
