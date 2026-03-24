@@ -71,7 +71,7 @@ Times Used:    5
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/gpt-codex-pool.git
+git clone https://github.com/AlexANSO/gpt-codex-pool.git
 cd gpt-codex-pool
 
 # Install dependencies
