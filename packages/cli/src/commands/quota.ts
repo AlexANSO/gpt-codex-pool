@@ -46,8 +46,9 @@ const check = new Command('check')
 
 const monitor = new Command('monitor')
   .description('Monitor account quota in real-time')
+  .argument('[accountId]', 'Account ID (optional)')
   .option('-i, --interval <seconds>', 'Refresh interval', '30')
-  .action(async (options) => {
+  .action(async (accountId, options) => {
     const manager = new PoolManager();
     await manager.initialize();
 
@@ -57,7 +58,31 @@ const monitor = new Command('monitor')
       process.exit(1);
     }
 
-    const accounts = manager.getAllAccounts().filter(a => a.status === 'active' || a.status === 'degraded');
+    const getMonitoredAccounts = () => {
+      if (accountId) {
+        const account = manager.getAccount(accountId);
+        return account ? [account] : [];
+      }
+
+      return manager.getAllAccounts().filter(a => a.status === 'active' || a.status === 'degraded');
+    };
+
+    if (accountId) {
+      const account = manager.getAccount(accountId);
+      if (!account) {
+        console.log(chalk.red(`Account ${accountId} not found`));
+        process.exit(1);
+      }
+
+      const credentials = await manager.getCredentials(accountId);
+      if (!credentials?.accessToken) {
+        console.log(chalk.yellow('No credentials found'));
+        console.log(chalk.yellow('Run "codex-pool auth login" first'));
+        process.exit(1);
+      }
+    }
+
+    const accounts = getMonitoredAccounts();
     
     if (accounts.length === 0) {
       console.log(chalk.yellow('No active accounts'));
@@ -81,7 +106,7 @@ const monitor = new Command('monitor')
       console.log(header);
       console.log('-'.repeat(header.length));
 
-      const accounts = manager.getAllAccounts().filter(a => a.status === 'active' || a.status === 'degraded');
+      const accounts = getMonitoredAccounts();
 
       for (const account of accounts) {
         const credentials = await manager.getCredentials(account.id);
