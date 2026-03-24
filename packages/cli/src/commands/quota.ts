@@ -69,10 +69,11 @@ const monitor = new Command('monitor')
     const monitorOnce = async () => {
       const idColumnWidth = 24;
       const accountColumnWidth = 32;
+      const weeklyResetColumnWidth = 14;
       const header =
         `${'ID'.padEnd(idColumnWidth)} ${'Account'.padEnd(accountColumnWidth)} ` +
         `${'5h Used'.padEnd(10)} ${'5h Rem'.padEnd(10)} ${'Weekly Used'.padEnd(12)} ` +
-        `${'Weekly Rem'.padEnd(12)} ${'Code Review'}`;
+        `${'Weekly Rem'.padEnd(12)} ${'Weekly Reset'.padEnd(weeklyResetColumnWidth)} ${'Code Review'}`;
 
       console.clear();
       console.log(chalk.bold(`Quota Monitor - ${new Date().toLocaleString()}`));
@@ -107,6 +108,7 @@ const monitor = new Command('monitor')
               `${shortColor(String(result.quota.shortRemaining + '%').padEnd(10))} ` +
               `${longColor(String(result.quota.longUsed + '%').padEnd(12))} ` +
               `${longColor(String(result.quota.longRemaining + '%').padEnd(12))} ` +
+              `${longColor(formatDuration(result.quota.longResetAfter).padEnd(weeklyResetColumnWidth))} ` +
               `${result.quota.codeReviewRemaining}%`
             );
           } else {
